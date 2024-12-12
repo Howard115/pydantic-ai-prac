@@ -7,6 +7,14 @@ from streamlit_folium import st_folium
 # Initialize geocoder with a more descriptive user agent
 geolocator = Nominatim(user_agent="my_unique_app_name")  # Change to a unique name
 
+# Initialize session state variables if they don't exist
+if 'previous_location' not in st.session_state:
+    st.session_state.previous_location = ""
+if 'latitude' not in st.session_state:
+    st.session_state.latitude = 39.949610
+if 'longitude' not in st.session_state:
+    st.session_state.longitude = -75.150282
+
 # Add a text input for user location
 user_location = st.text_input("Enter a location:", "Kaohsiung")  # Default to Kaohsiung
 
