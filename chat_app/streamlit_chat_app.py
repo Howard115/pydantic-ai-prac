@@ -7,7 +7,7 @@ Run with:
 import streamlit as st
 from pathlib import Path
 from dataclasses import dataclass
-from typing import Iterator, Annotated
+from typing import Iterator, Annotated, Union
 import json
 from datetime import datetime
 import asyncio
@@ -19,6 +19,10 @@ from pydantic_ai.messages import (
     MessagesTypeAdapter,
     ModelTextResponse,
     UserPrompt,
+    SystemPrompt,
+    ToolReturn,
+    RetryPrompt,
+    ModelStructuredResponse,
 )
 
 # Initialize the agent
@@ -38,32 +42,55 @@ class Database:
 
     def add_messages(self, messages: list[Message]):
         with self.file.open("a") as f:
-            # Wrap messages in a list for MessagesTypeAdapter
-            messages_json = MessagesTypeAdapter.dump_json(messages)
-            f.write(messages_json.decode() + "\n")
+            # Convert messages to JSON and write
+            messages_data = []
+            for msg in messages:
+                if hasattr(msg, 'model_dump'):
+                    msg_dict = msg.model_dump()
+                else:
+                    msg_dict = {
+                        'content': msg.content,
+                        'role': msg.role,
+                        'timestamp': msg.timestamp.isoformat() if hasattr(msg, 'timestamp') else datetime.now().isoformat()
+                    }
+                messages_data.append(msg_dict)
+            json_data = json.dumps(messages_data)
+            f.write(json_data + "\n")
 
     def get_messages(self) -> Iterator[Message]:
         if self.file.exists():
-            with self.file.open("rb") as f:
+            with self.file.open() as f:
                 for line in f:
                     if line.strip():
                         try:
-                            # Try to parse as a list of messages first
-                            messages = MessagesTypeAdapter.validate_json(line)
-                            yield from messages
-                        except Exception:
-                            # If that fails, try parsing as a single message
-                            try:
-                                message_data = json.loads(line)
-                                if isinstance(message_data, list):
-                                    messages = MessagesTypeAdapter.validate_json(line)
-                                    yield from messages
-                                else:
-                                    messages = MessagesTypeAdapter.validate_json(json.dumps([message_data]).encode())
-                                    yield from messages
-                            except Exception as e:
-                                print(f"Error parsing message: {e}")
-                                continue
+                            messages_data = json.loads(line)
+                            if isinstance(messages_data, list):
+                                for msg_data in messages_data:
+                                    try:
+                                        # Parse timestamp if it's a string
+                                        if isinstance(msg_data.get('timestamp'), str):
+                                            msg_data['timestamp'] = datetime.fromisoformat(msg_data['timestamp'])
+                                        
+                                        # Create appropriate message type based on role
+                                        role = msg_data.get('role')
+                                        if role == 'user':
+                                            yield UserPrompt(**msg_data)
+                                        elif role == 'model-text-response':
+                                            yield ModelTextResponse(**msg_data)
+                                        elif role == 'system':
+                                            yield SystemPrompt(**msg_data)
+                                        elif role == 'tool-return':
+                                            yield ToolReturn(**msg_data)
+                                        elif role == 'retry':
+                                            yield RetryPrompt(**msg_data)
+                                        elif role == 'model-structured-response':
+                                            yield ModelStructuredResponse(**msg_data)
+                                    except Exception as e:
+                                        print(f"Error parsing message: {e}")
+                                        continue
+                        except Exception as e:
+                            print(f"Error parsing line: {e}")
+                            continue
 
 def initialize_session_state():
     if "messages" not in st.session_state:
@@ -117,7 +144,10 @@ def main():
             
             # Add AI response to chat history
             if full_response:
-                ai_message = ModelTextResponse(content=full_response, timestamp=datetime.now().isoformat())
+                ai_message = ModelTextResponse(
+                    content=full_response,
+                    timestamp=datetime.now()
+                )
                 st.session_state.messages.append(ai_message)
                 
                 # Save to database
