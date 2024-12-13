@@ -24,40 +24,40 @@ from pydantic_ai.messages import (
 )
 
 # 'if-token-present' means nothing will be sent (and the example will work) if you don't have logfire configured
-logfire.configure(send_to_logfire='if-token-present')
+logfire.configure(send_to_logfire="if-token-present")
 
-agent = Agent('openai:gpt-4o')
+agent = Agent("openai:gpt-4o")
 
 app = fastapi.FastAPI()
 logfire.instrument_fastapi(app)
 
 
-@app.get('/')
+@app.get("/")
 async def index() -> HTMLResponse:
-    return HTMLResponse((THIS_DIR / 'chat_app.html').read_bytes())
+    return HTMLResponse((THIS_DIR / "chat_app.html").read_bytes())
 
 
-@app.get('/chat_app.ts')
+@app.get("/chat_app.ts")
 async def main_ts() -> Response:
     """Get the raw typescript code, it's compiled in the browser, forgive me."""
-    return Response((THIS_DIR / 'chat_app.ts').read_bytes(), media_type='text/plain')
+    return Response((THIS_DIR / "chat_app.ts").read_bytes(), media_type="text/plain")
 
 
-@app.get('/chat/')
+@app.get("/chat/")
 async def get_chat() -> Response:
     msgs = database.get_messages()
     return Response(
-        b'\n'.join(MessageTypeAdapter.dump_json(m) for m in msgs),
-        media_type='text/plain',
+        b"\n".join(MessageTypeAdapter.dump_json(m) for m in msgs),
+        media_type="text/plain",
     )
 
 
-@app.post('/chat/')
+@app.post("/chat/")
 async def post_chat(prompt: Annotated[str, fastapi.Form()]) -> StreamingResponse:
     async def stream_messages():
         """Streams new line delimited JSON `Message`s to the client."""
         # stream the user prompt so that can be displayed straight away
-        yield MessageTypeAdapter.dump_json(UserPrompt(content=prompt)) + b'\n'
+        yield MessageTypeAdapter.dump_json(UserPrompt(content=prompt)) + b"\n"
         # get the chat history so far to pass as context to the agent
         messages = list(database.get_messages())
         # run the agent with the user prompt and the chat history
@@ -66,17 +66,17 @@ async def post_chat(prompt: Annotated[str, fastapi.Form()]) -> StreamingResponse
                 # text here is a `str` and the frontend wants
                 # JSON encoded ModelTextResponse, so we create one
                 m = ModelTextResponse(content=text, timestamp=result.timestamp())
-                yield MessageTypeAdapter.dump_json(m) + b'\n'
+                yield MessageTypeAdapter.dump_json(m) + b"\n"
 
         # add new messages (e.g. the user prompt and the agent response in this case) to the database
         database.add_messages(result.new_messages_json())
 
-    return StreamingResponse(stream_messages(), media_type='text/plain')
+    return StreamingResponse(stream_messages(), media_type="text/plain")
 
 
 THIS_DIR = Path(__file__).parent
 MessageTypeAdapter: TypeAdapter[Message] = TypeAdapter(
-    Annotated[Message, Field(discriminator='role')]
+    Annotated[Message, Field(discriminator="role")]
 )
 
 
@@ -84,15 +84,15 @@ MessageTypeAdapter: TypeAdapter[Message] = TypeAdapter(
 class Database:
     """Very rudimentary database to store chat messages in a JSON lines file."""
 
-    file: Path = THIS_DIR / '.chat_app_messages.jsonl'
+    file: Path = THIS_DIR / ".chat_app_messages.jsonl"
 
     def add_messages(self, messages: bytes):
-        with self.file.open('ab') as f:
-            f.write(messages + b'\n')
+        with self.file.open("ab") as f:
+            f.write(messages + b"\n")
 
     def get_messages(self) -> Iterator[Message]:
         if self.file.exists():
-            with self.file.open('rb') as f:
+            with self.file.open("rb") as f:
                 for line in f:
                     if line:
                         yield from MessagesTypeAdapter.validate_json(line)
@@ -101,9 +101,7 @@ class Database:
 database = Database()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(
-        "chat_app:app", reload=True, reload_dirs=[str(THIS_DIR)]
-    )
+    uvicorn.run("chat_app:app", reload=True, reload_dirs=[str(THIS_DIR)])
