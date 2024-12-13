@@ -3,4 +3,5 @@
 __pycache__/
 .env
 
+# chat history
 chat_app/.chat_app_messages.jsonl
