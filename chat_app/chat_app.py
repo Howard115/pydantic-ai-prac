@@ -89,7 +89,7 @@ MessageTypeAdapter: TypeAdapter[Message] = TypeAdapter(
 class Database:
     """Very rudimentary database to store chat messages in a JSON lines file."""
 
-    file: Path = THIS_DIR / ".chat_app_messages.jsonl"
+    file: Path = THIS_DIR / "chat_app_messages.jsonl"
 
     def add_messages(self, messages: bytes):
         with self.file.open("ab") as f:
