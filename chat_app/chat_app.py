@@ -105,5 +105,5 @@ if __name__ == '__main__':
     import uvicorn
 
     uvicorn.run(
-        'pydantic_ai_examples.chat_app:app', reload=True, reload_dirs=[str(THIS_DIR)]
+        "chat_app:app", reload=True, reload_dirs=[str(THIS_DIR)]
     )
