@@ -2,3 +2,5 @@
 
 __pycache__/
 .env
+
+chat_app/.chat_app_messages.jsonl

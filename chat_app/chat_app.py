@@ -28,6 +28,11 @@ logfire.configure(send_to_logfire="if-token-present")
 
 agent = Agent("openai:gpt-4o")
 
+@agent.tool_plain
+def get_weather(location: str) -> str:
+    """Get the weather for a given location."""
+    return f"The weather in {location} is sunny."
+
 app = fastapi.FastAPI()
 logfire.instrument_fastapi(app)
 
