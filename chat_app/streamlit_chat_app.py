@@ -13,7 +13,7 @@ Run with:
 import streamlit as st
 from pathlib import Path
 from dataclasses import dataclass
-from typing import Iterator, Union
+from typing import Any, Iterator, Union
 import json
 from datetime import datetime
 import asyncio
@@ -125,7 +125,7 @@ class ChatAgent:
                     if location:
                         return location.latitude, location.longitude
                     return None
-                except:
+                except Exception:
                     return None
 
             # Get coordinates for the location
@@ -163,7 +163,7 @@ class MessageDatabase:
             json_data = json.dumps(messages_data)
             f.write(json_data + "\n")
 
-    def _serialize_message(self, msg: Message) -> dict:
+    def _serialize_message(self, msg: Message) -> dict[str, Any]:
         """Convert a message object to a dictionary format.
 
         Handles both Pydantic v1 and v2 message objects.

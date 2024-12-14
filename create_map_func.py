@@ -38,7 +38,7 @@ def create_location_map(location_name="Kaohsiung", default_lat=39.949610, defaul
             if location:
                 return location.latitude, location.longitude
             return None
-        except:
+        except Exception:
             return None
 
     # Get coordinates for the location

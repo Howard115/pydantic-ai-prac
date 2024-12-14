@@ -37,7 +37,7 @@ def get_location_coordinates(location_name):
         if location:
             return location.latitude, location.longitude
         return None
-    except:
+    except Exception:  # Specify the exception type
         return None
 
 # Only update the map if the location has changed
