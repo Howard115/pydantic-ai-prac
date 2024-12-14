@@ -97,7 +97,7 @@ class ChatAgent:
             @st.cache_data
             def create_map(latitude, longitude, location_name):
                 """Create a folium map with a marker for the given coordinates"""
-                m = folium.Map(location=[latitude, longitude], zoom_start=16)
+                m = folium.Map(location=[latitude, longitude], zoom_start=13)
                 folium.Marker(
                     [latitude, longitude], popup=location_name, tooltip=location_name
                 ).add_to(m)
