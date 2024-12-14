@@ -285,15 +285,12 @@ class ChatUI:
 
     def run(self):
         """Run the chat application.""" 
-        col1, col2 = st.columns([1, 1])
-        with col1:
-            with st.container(height=600):
-                self.display_messages()
-                self.handle_user_input()
+        self.display_messages()
+        self.handle_user_input()
         
-        with col2:
-            if st.session_state.map:
-                st_folium(st.session_state.map, width=900, height=600)
+        if st.session_state.map:
+            with st.sidebar:
+                st_folium(st.session_state.map, width=500, height=800)
 
 
 def main():
