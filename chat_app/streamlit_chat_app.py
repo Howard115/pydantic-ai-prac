@@ -51,7 +51,9 @@ class ChatAgent:
     """Handles AI agent initialization and tools."""
 
     def __init__(self):
-        self.agent = Agent(MODEL_NAME, system_prompt="""You are a location assistant that helps users find and visualize places on maps. Your primary function is to:
+        self.agent = Agent(
+            MODEL_NAME,
+            system_prompt="""You are a location assistant that helps users find and visualize places on maps. Your primary function is to:
         1. Automatically display any mentioned location using the `create_location_map` function
         2. Handle location queries in multiple languages (including English and Chinese)
         3. Provide brief, relevant information about the location along with displaying it
@@ -62,7 +64,8 @@ class ChatAgent:
         3. Handle both specific locations (like Taipei 101) and general areas (like cities)
         4. If a location is unclear or cannot be found, ask for clarification
         
-        Remember: Every valid location query should result in a map display - don't ask for permission, just show it.""")
+        Remember: Every valid location query should result in a map display - don't ask for permission, just show it.""",
+        )
         self._register_tools()
 
     def _register_tools(self):
@@ -74,15 +77,17 @@ class ChatAgent:
             return f"The weather in {location} is sunny."
 
         @self.agent.tool_plain
-        async def create_location_map(location_name="Kaohsiung", default_lat=39.949610, default_lon=-75.150282):
+        async def create_location_map(
+            location_name="Kaohsiung", default_lat=39.949610, default_lon=-75.150282
+        ):
             """
             Creates an interactive map for a given location using Streamlit and Folium.
-            
+
             Args:
                 location_name (str): Name of the location to display on map
                 default_lat (float): Default latitude if location not found
                 default_lon (float): Default longitude if location not found
-            
+
             Returns:
                 dict: Map data from st_folium
             """
@@ -94,9 +99,7 @@ class ChatAgent:
                 """Create a folium map with a marker for the given coordinates"""
                 m = folium.Map(location=[latitude, longitude], zoom_start=16)
                 folium.Marker(
-                    [latitude, longitude], 
-                    popup=location_name, 
-                    tooltip=location_name
+                    [latitude, longitude], popup=location_name, tooltip=location_name
                 ).add_to(m)
                 return m
 
@@ -113,7 +116,7 @@ class ChatAgent:
 
             # Get coordinates for the location
             coordinates = get_location_coordinates(location_name)
-            
+
             if coordinates:
                 latitude, longitude = coordinates
             else:
@@ -122,7 +125,7 @@ class ChatAgent:
 
             # Create and display map
             m = create_map(latitude, longitude, location_name)
-            st.session_state.map=m
+            st.session_state.map = m
 
 
 @dataclass
@@ -284,13 +287,23 @@ class ChatUI:
                     self.database.add_messages([user_message, ai_message])
 
     def run(self):
-        """Run the chat application.""" 
+        """Run the chat application."""
+        st.markdown(
+            """
+            <style>
+                section[data-testid="stSidebar"] {
+                    width: 600px !important;
+                }
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
         self.display_messages()
         self.handle_user_input()
-        
+
         if st.session_state.map:
             with st.sidebar:
-                st_folium(st.session_state.map, width=500, height=800)
+                st_folium(st.session_state.map, width=500)
 
 
 def main():
