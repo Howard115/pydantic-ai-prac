@@ -20,7 +20,7 @@ import asyncio
 import folium
 from geopy.geocoders import Nominatim
 from streamlit_folium import st_folium
-
+import random
 from pydantic_ai import Agent
 from pydantic_ai.messages import (
     Message,
@@ -74,7 +74,8 @@ class ChatAgent:
         @self.agent.tool_plain
         def get_weather(location: str) -> str:
             """Get the weather for a given location."""
-            return f"The weather in {location} is sunny."
+            weather = random.choice(["sunny", "cloudy", "rainy", "snowy"])
+            return f"The weather in {location} is {weather}."
 
         @self.agent.tool_plain
         async def create_location_map(
