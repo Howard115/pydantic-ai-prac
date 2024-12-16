@@ -10,6 +10,7 @@ Run with:
     streamlit run streamlit_chat_app.py
 """
 
+from pydantic import BaseModel, Field
 import streamlit as st
 from pathlib import Path
 from dataclasses import dataclass
@@ -47,19 +48,44 @@ MessageTypes = Union[
 ]
 
 
+
 class ChatAgent:
     """Handles AI agent initialization and tools."""
+    
+    class LocationMapResponse(BaseModel):
+        location: Union[str, None] = Field(
+            default=None,
+            description="The location to create a map for (include country name)"
+        )
+        response: str = Field(
+            default="I can help you find locations on the map!",
+            description="Response message to the user"
+        )
+
 
     def __init__(self):
         self.agent = Agent(
             MODEL_NAME,
+            result_type=self.LocationMapResponse,
             system_prompt="""
-            You are a friendly location assistant helping users find and visualize places on maps by using the create_location_map() tool.
+            You are a friendly location assistant helping users find and visualize places on maps.
         
-            Primary Functions:
-            • Provide brief location info with nearby attractions
-            • Give concise location details
-            • Never ask permission - just show the map
+            When responding to location-related queries:
+            1. Always provide both 'location' and 'response' fields
+            2. The 'location' field should contain the place name with country
+            3. The 'response' field should contain your message to the user
+        
+            Example response format:
+            {
+                "location": "Paris, France",
+                "response": "Here's a map of Paris, the beautiful capital of France!"
+            }
+        
+            If the query is not location-related, set location to null:
+            {
+                "location": null,
+                "response": "I can help you find locations on the map. Just ask about a specific place!"
+            }
             """,
         )
         self._register_tools()
@@ -73,7 +99,7 @@ class ChatAgent:
             weather = random.choice(["sunny", "cloudy", "rainy", "snowy"])
             return f"The weather in {location} is {weather}."
 
-        @self.agent.tool_plain
+
         async def create_location_map(
             location_name="Kaohsiung", default_lat=39.949610, default_lon=-75.150282
         ):
@@ -124,6 +150,16 @@ class ChatAgent:
             m = create_map(latitude, longitude, location_name)
             st.session_state.map = m
 
+        @self.agent.result_validator
+        async def validate_result(result: self.LocationMapResponse):
+            try:
+                if result.location:
+                    await create_location_map(result.location)
+                return result.response
+            except Exception as e:
+                st.error(f"Error displaying map: {str(e)}")
+                return result.response
+            
 
 @dataclass
 class MessageDatabase:
