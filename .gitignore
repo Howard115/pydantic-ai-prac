@@ -5,3 +5,4 @@ __pycache__/
 
 # chat history
 chat_app/chat_app_messages.jsonl
+test/*
