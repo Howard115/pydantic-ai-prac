@@ -13,7 +13,6 @@ if not st.session_state.get("game_player"):
         "openai:gpt-4o-mini",
     )
 
-    # add a system prompt to the game_player
     @game_player.system_prompt
     def system_prompt(ctx: RunContext[ForbiddenWordGameDeps]):
         return f"""
@@ -34,14 +33,11 @@ for message in history:
     elif message.role == "model-text-response":
         st.chat_message("assistant").markdown(message.content)
 
-# React to user input
 if prompt := st.chat_input("What is up?"):
-    # Display user message in chat message container
     st.chat_message("user").markdown(prompt)
 
     deps = ForbiddenWordGameDeps(user_forbidden_word="cat")
 
-    # Run async code in sync context
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     response = loop.run_until_complete(
@@ -49,9 +45,7 @@ if prompt := st.chat_input("What is up?"):
     )
     loop.close()
 
-    # Display assistant response in chat message container
     st.chat_message("assistant").markdown(response.data)
-    # Add assistant response to chat history
     st.session_state.history = response.all_messages()
 
 st.write(st.session_state.history)
