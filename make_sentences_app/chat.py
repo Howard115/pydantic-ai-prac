@@ -4,33 +4,68 @@ import asyncio
 from pydantic import BaseModel, Field
 
 
-class ForbiddenWordGameDeps(BaseModel):
+class GamePlayerDeps(BaseModel):
     user_forbidden_word: str = Field(description="The forbidden word of the user")
+    your_forbidden_words: list[str] = Field(
+        description="The list of words you should avoid in your response"
+    )
+
+
+class WordsDetectorResult(BaseModel):
+    possible_words: list[str] = Field(
+        description="The list of words ranked from high to low in terms of probability"
+    )
 
 
 class ForbiddenWordGame:
     def __init__(self):
         self.initialize_session_state()
         self.game_player = st.session_state["game_player"]
+        self.words_detector = st.session_state["words_detector"]
         self.history = st.session_state["history"]
+        self.detected_words = st.session_state["detected_words"]
 
     def initialize_session_state(self):
-        if not st.session_state.get("game_player"):
-            game_player = self._create_game_player()
-            st.session_state["game_player"] = game_player
+        if not st.session_state.get("history"):
             st.session_state["history"] = []
+        if not st.session_state.get("detected_words"):
+            st.session_state["detected_words"] = []
+
+        if not st.session_state.get("game_player"):
+            st.session_state["game_player"] = self._create_game_player()
+        if not st.session_state.get("words_detector"):
+            st.session_state["words_detector"] = self._create_words_detector()
 
     def _create_game_player(self):
         game_player = Agent("openai:gpt-4o-mini")
 
         @game_player.system_prompt
-        def system_prompt(ctx: RunContext[ForbiddenWordGameDeps]):
+        def system_prompt(ctx: RunContext[GamePlayerDeps]):
             return f"""
-            Your task is to do everything you can to guide user to say this word: "{ctx.deps.user_forbidden_word}".
-            when user says the word, you say "You lose!" and the game is over.
+            Your task is to do everything you can to guide user to say this word:{ctx.deps.user_forbidden_word}
+            while responding to the input sentence but don't mention the words in the your_forbidden_words list in your response.
+            You can use `check_your_forbidden_words()` to see what words you should avoid in your response. 
             """
 
+        @game_player.tool
+        def check_your_forbidden_words(ctx: RunContext[GamePlayerDeps]):
+            return f"your_forbidden_words:{ctx.deps.your_forbidden_words}"
+
         return game_player
+
+    def _create_words_detector(self):
+        words_detector = Agent(
+            "openai:gpt-4o-mini",
+            result_type=WordsDetectorResult,
+        )
+
+        @words_detector.system_prompt
+        def system_prompt():
+            return """
+            Please analyze the input sentence and identify the words that the user is most likely referring to or the word that the user guides you to talk about.
+            """
+
+        return words_detector
 
     def display_chat_history(self):
         for message in self.history:
@@ -40,9 +75,16 @@ class ForbiddenWordGame:
                 st.chat_message("assistant").markdown(message.content)
 
     async def process_user_input(self, prompt: str):
-        deps = ForbiddenWordGameDeps(user_forbidden_word="cat")
+        result = await self.words_detector.run(prompt)
+
+        deps = GamePlayerDeps(
+            user_forbidden_word="cat",
+            your_forbidden_words=result.data.possible_words,
+        )
         response = await self.game_player.run(
-            prompt, message_history=self.history, deps=deps
+            prompt,
+            message_history=self.history,
+            deps=deps,
         )
         return response
 
