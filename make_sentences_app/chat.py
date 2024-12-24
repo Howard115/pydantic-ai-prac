@@ -24,6 +24,8 @@ class ForbiddenWordGame:
         self.words_detector = st.session_state["words_detector"]
         self.history = st.session_state["history"]
         self.detected_words = st.session_state["detected_words"]
+        self.user_forbidden_word = "dog"
+        self.assistant_forbidden_word = "cat"
 
     def initialize_session_state(self):
         if not st.session_state.get("history"):
@@ -74,11 +76,29 @@ class ForbiddenWordGame:
             elif message.role == "model-text-response":
                 st.chat_message("assistant").markdown(message.content)
 
+    def is_gameover(self, new_messages):
+        for message in new_messages:
+            if message.role == "user":
+                if self.user_forbidden_word in message.content.lower():
+                    st.info(
+                        f"Game Over - You lose! You said the forbidden word: {self.user_forbidden_word}",
+                        icon="ℹ️",
+                    )
+                    return True
+            elif message.role == "model-text-response":
+                if self.assistant_forbidden_word in message.content.lower():
+                    st.info(
+                        f"Game Over - Assistant loses! Assistant said a forbidden word: {self.assistant_forbidden_word}",
+                        icon="ℹ️",
+                    )
+                    return True
+        return False
+
     async def process_user_input(self, prompt: str):
         result = await self.words_detector.run(prompt)
 
         deps = GamePlayerDeps(
-            user_forbidden_word="cat",
+            user_forbidden_word=self.user_forbidden_word,
             your_forbidden_words=result.data.possible_words,
         )
         response = await self.game_player.run(
@@ -98,6 +118,8 @@ class ForbiddenWordGame:
 
         st.chat_message("assistant").markdown(response.data)
         st.session_state.history = response.all_messages()
+
+        self.is_gameover(response.new_messages())
 
     def run(self):
         self.display_chat_history()
