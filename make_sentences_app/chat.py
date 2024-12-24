@@ -44,7 +44,7 @@ class ForbiddenWordGame:
         @game_player.system_prompt
         def system_prompt(ctx: RunContext[GamePlayerDeps]):
             return f"""
-            Your task is to do everything you can to guide user to say this word:{ctx.deps.user_forbidden_word}
+            Your task is to guide user to say this word:{ctx.deps.user_forbidden_word}
             while responding to the input sentence but don't mention the words in the your_forbidden_words list in your response.
             You can use `check_your_forbidden_words()` to see what words you should avoid in your response. 
             """
@@ -99,7 +99,7 @@ class ForbiddenWordGame:
 
         deps = GamePlayerDeps(
             user_forbidden_word=self.user_forbidden_word,
-            your_forbidden_words=result.data.possible_words,
+            your_forbidden_words=[result.data.possible_words[0]],
         )
         response = await self.game_player.run(
             prompt,
