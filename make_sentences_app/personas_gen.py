@@ -1,6 +1,5 @@
-from pydantic_ai import Agent, RunContext
+from pydantic_ai import Agent
 from pydantic import BaseModel, Field
-from typing import Union
 from jobs_getter import get_random_job
 
 
@@ -29,14 +28,16 @@ persona_generator = Agent(
     ),
 )
 
-job_1 = get_random_job()
-job_2 = get_random_job()
 
-result0 = persona_generator.run_sync(f"{job_1}\n{job_2}")
-print(result0.data.persona_1+"\n")
-print(result0.data.persona_2+"\n")
-print(result0.data.most_common_word_1+"\n")
-print(result0.data.most_common_word_2+"\n")
-print(result0.data.debate_topic+"\n")
-print(result0.data.debate_position_1+"\n")
-print(result0.data.debate_position_2+"\n")
+
+if __name__ == "__main__":
+    job_1 = get_random_job()
+    job_2 = get_random_job()
+    result0 = persona_generator.run_sync(f"{job_1}\n{job_2}")
+    print(result0.data.persona_1)
+    print(result0.data.persona_2)
+    print(result0.data.most_common_word_1)
+    print(result0.data.most_common_word_2)
+    print(result0.data.debate_topic)
+    print(result0.data.debate_position_1)
+    print(result0.data.debate_position_2)
