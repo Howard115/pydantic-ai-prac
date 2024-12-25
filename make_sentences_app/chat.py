@@ -4,10 +4,6 @@ import asyncio
 from pydantic import BaseModel, Field
 
 
-class ForbiddenWordGameDeps(BaseModel):
-    user_forbidden_word: str = Field(description="The forbidden word of the user")
-
-
 class ForbiddenWordGame:
     def __init__(self):
         self.initialize_session_state()
@@ -23,13 +19,6 @@ class ForbiddenWordGame:
     def _create_game_player(self):
         game_player = Agent("openai:gpt-4o-mini")
 
-        @game_player.system_prompt
-        def system_prompt(ctx: RunContext[ForbiddenWordGameDeps]):
-            return f"""
-            Your task is to do everything you can to guide user to say this word: "{ctx.deps.user_forbidden_word}".
-            when user says the word, you say "You lose!" and the game is over.
-            """
-
         return game_player
 
     def display_chat_history(self):
@@ -40,10 +29,7 @@ class ForbiddenWordGame:
                 st.chat_message("assistant").markdown(message.content)
 
     async def process_user_input(self, prompt: str):
-        deps = ForbiddenWordGameDeps(user_forbidden_word="cat")
-        response = await self.game_player.run(
-            prompt, message_history=self.history, deps=deps
-        )
+        response = await self.game_player.run(prompt, message_history=self.history)
         return response
 
     def update_chat(self, prompt: str):
@@ -62,7 +48,7 @@ class ForbiddenWordGame:
 
         if prompt := st.chat_input("What is up?"):
             self.update_chat(prompt)
-            st.sidebar.write(st.session_state.history)
+        st.sidebar.write(st.session_state.history)
 
 
 def main():
