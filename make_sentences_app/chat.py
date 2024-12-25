@@ -4,6 +4,8 @@ import asyncio
 from pydantic import BaseModel, Field
 from jobs_getter import get_random_job
 from personas_gen import persona_generator
+from gameover_judge import gameover_judge, JudgeDeps
+
 
 class GamePlayerDeps(BaseModel):
     user_forbidden_word: str = Field(description="The forbidden word of the user")
@@ -29,8 +31,12 @@ class ForbiddenWordGame:
         self.words_detector = st.session_state["words_detector"]
         self.history = st.session_state["history"]
         self.detected_words = st.session_state["detected_words"]
-        self.user_forbidden_word = st.session_state["persona_related_stuff"].most_common_word_1
-        self.assistant_forbidden_word = st.session_state["persona_related_stuff"].most_common_word_2
+        self.user_forbidden_word = st.session_state[
+            "persona_related_stuff"
+        ].most_common_word_1
+        self.assistant_forbidden_word = st.session_state[
+            "persona_related_stuff"
+        ].most_common_word_2
 
     def initialize_session_state(self):
         if not st.session_state.get("history"):
@@ -38,14 +44,15 @@ class ForbiddenWordGame:
         if not st.session_state.get("detected_words"):
             st.session_state["detected_words"] = []
         if not st.session_state.get("persona_related_stuff"):
-            st.session_state["persona_related_stuff"] = self._get_persona_related_stuff()
+            st.session_state["persona_related_stuff"] = (
+                self._get_persona_related_stuff()
+            )
 
         if not st.session_state.get("game_player"):
             st.session_state["game_player"] = self._create_game_player()
         if not st.session_state.get("words_detector"):
             st.session_state["words_detector"] = self._create_words_detector()
 
-    
     def _get_persona_related_stuff(self):
         with st.sidebar:
             with st.spinner("Generating personas..."):
@@ -104,17 +111,21 @@ class ForbiddenWordGame:
             elif message.role == "model-text-response":
                 st.chat_message("assistant").markdown(message.content)
 
-    def is_gameover(self, new_messages):
+    async def is_gameover(self, new_messages):
         for message in new_messages:
             if message.role == "user":
-                if self.user_forbidden_word in message.content.lower():
+                deps = JudgeDeps(target_word=self.user_forbidden_word)
+                result = await gameover_judge.run(message.content, deps=deps)
+                if result.data.is_contain:
                     st.info(
                         f"Game Over - You lose! You said the forbidden word: {self.user_forbidden_word}",
                         icon="ℹ️",
                     )
                     return True
-            elif message.role == "model-text-response":
-                if self.assistant_forbidden_word in message.content.lower():
+            if message.role == "model-text-response":
+                deps = JudgeDeps(target_word=self.assistant_forbidden_word)
+                result = await gameover_judge.run(message.content, deps=deps)
+                if result.data.is_contain:
                     st.info(
                         f"Game Over - Assistant loses! Assistant said a forbidden word: {self.assistant_forbidden_word}",
                         icon="ℹ️",
@@ -151,7 +162,10 @@ class ForbiddenWordGame:
         st.chat_message("assistant").markdown(response.data)
         st.session_state.history = response.all_messages()
 
-        self.is_gameover(response.new_messages())
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(self.is_gameover(response.new_messages()))
+        loop.close()
 
     def run(self):
         self.display_chat_history()
