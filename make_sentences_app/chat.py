@@ -2,7 +2,8 @@ from pydantic_ai import Agent, RunContext
 import streamlit as st
 import asyncio
 from pydantic import BaseModel, Field
-
+from jobs_getter import get_random_job
+from personas_gen import persona_generator
 
 class GamePlayerDeps(BaseModel):
     user_forbidden_word: str = Field(description="The forbidden word of the user")
@@ -24,19 +25,37 @@ class ForbiddenWordGame:
         self.words_detector = st.session_state["words_detector"]
         self.history = st.session_state["history"]
         self.detected_words = st.session_state["detected_words"]
-        self.user_forbidden_word = "dog"
-        self.assistant_forbidden_word = "cat"
+        self.user_forbidden_word = st.session_state["persona_related_stuff"].most_common_word_1
+        self.assistant_forbidden_word = st.session_state["persona_related_stuff"].most_common_word_2
 
     def initialize_session_state(self):
         if not st.session_state.get("history"):
             st.session_state["history"] = []
         if not st.session_state.get("detected_words"):
             st.session_state["detected_words"] = []
+        if not st.session_state.get("persona_related_stuff"):
+            st.session_state["persona_related_stuff"] = self._get_persona_related_stuff()
 
         if not st.session_state.get("game_player"):
             st.session_state["game_player"] = self._create_game_player()
         if not st.session_state.get("words_detector"):
             st.session_state["words_detector"] = self._create_words_detector()
+
+    
+    def _get_persona_related_stuff(self):
+        with st.sidebar:
+            with st.spinner("Generating personas..."):
+                job_1 = get_random_job()
+                job_2 = get_random_job()
+
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                result = loop.run_until_complete(
+                    persona_generator.run(f"{job_1}\n{job_2}")
+                )
+                loop.close()
+
+                return result.data
 
     def _create_game_player(self):
         game_player = Agent("openai:gpt-4o-mini")
@@ -127,6 +146,7 @@ class ForbiddenWordGame:
         if prompt := st.chat_input("What is up?"):
             self.update_chat(prompt)
             st.sidebar.write(st.session_state.history)
+        st.sidebar.write(st.session_state.persona_related_stuff)
 
 
 def main():
