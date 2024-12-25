@@ -10,6 +10,10 @@ class GamePlayerDeps(BaseModel):
     your_forbidden_words: list[str] = Field(
         description="The list of words you should avoid in your response"
     )
+    assistant_persona: str = Field(description="The persona of the assistant")
+    user_persona: str = Field(description="The persona of the user")
+    debate_topic: str = Field(description="The topic of the debate")
+    assistant_position: str = Field(description="The position of the assistant")
 
 
 class WordsDetectorResult(BaseModel):
@@ -63,8 +67,13 @@ class ForbiddenWordGame:
         @game_player.system_prompt
         def system_prompt(ctx: RunContext[GamePlayerDeps]):
             return f"""
+            Your persona is: {ctx.deps.assistant_persona}
+            User's persona is: {ctx.deps.user_persona}
+            You are currently talking about the following topic with the user: {ctx.deps.debate_topic}
+            Your position is: {ctx.deps.assistant_position}
+            
             Your task is to guide user to say this word:{ctx.deps.user_forbidden_word}
-            while responding to the input sentence but don't mention the words in the your_forbidden_words list in your response.
+            while responding to the user's input but don't mention the words in the your_forbidden_words list in your response.
             You can use `check_your_forbidden_words()` to see what words you should avoid in your response. 
             """
 
@@ -119,6 +128,10 @@ class ForbiddenWordGame:
         deps = GamePlayerDeps(
             user_forbidden_word=self.user_forbidden_word,
             your_forbidden_words=[result.data.possible_words[0]],
+            assistant_persona=st.session_state.persona_related_stuff.persona_2,
+            user_persona=st.session_state.persona_related_stuff.persona_1,
+            debate_topic=st.session_state.persona_related_stuff.debate_topic,
+            assistant_position=st.session_state.persona_related_stuff.debate_position_2,
         )
         response = await self.game_player.run(
             prompt,
